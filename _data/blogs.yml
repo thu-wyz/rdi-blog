@@ -1,3 +1,10 @@
+- link: /blog/benchevolver
+  img: /blog/benchevolver/framework.png
+  title: "BenchEvolver: Frontier Task Synthesis via Solution-Centric Evolution"
+  date: "2026-06-13"
+  description: "An automated system that generates harder coding benchmarks by evolving solutions first, then deriving tasks and tests from the executable code. The resulting LiveCodeBench-Plus (91 problems, 30 algorithm categories) cuts hard-split Pass@1 from 87.0% to 45.7% across models, and RL training on evolved tasks yields +8.7 Pass@1 over seed-only training."
+  category: "main"
+
 - link: /blog/exploitgym
   img: /blog/exploitgym/images/overview.png
   title: "ExploitGym: Can AI Agents Turn Security Vulnerabilities into Real Attacks?"
