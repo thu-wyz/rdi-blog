@@ -30,13 +30,13 @@ June 13, 2026
 </div>
 
 
-*Static benchmarks are dying — they get saturated quickly by frontier models* For example, on LiveCodeBench, today's frontier models already score over **99%** on the newest easy problems and above **90%** on average. Once a benchmark saturates, it loses both evaluation and training value. It can no longer separate strong models, and it provides little signal for further improvement. But manually curating harder tasks is slow, expensive, and always one step behind the models. Evaluation should instead **co-evolve with the models it measures.**
+*Static benchmarks are dying — they get saturated quickly by frontier models* For example, on LiveCodeBench, today's frontier models already score over **99%** on the newest (v6) easy problems and above **90%** across all splits. Once a benchmark saturates, it can no longer separate strong models or provide meaningful guiding signals for further model improvement. But manually curating harder tasks is slow, expensive, and always one step behind the models. Evaluation should instead **co-evolve with the models it measures.**
 
 ## TL;DR
 
 **BenchEvolver** automatically turns problems that models have already mastered into substantially harder, fully verified ones. The key shift is direction: instead of writing a new problem and hoping it is hard, BenchEvolver **evolves a reference solution first**, then builds the problem statement and tests.
 
-Because each task is selected by whether models actually fail it—not by how difficult it appears—the resulting problems stay challenging even for the model that created them. No stronger teacher is required. This unlocks two things:
+BenchEvolver does not just define difficulty based on heuristics. It changes the underlying solution, then keeps the tasks that real target models actually struggle with — including, in our experiments, the model that created them. That means no stronger teacher is needed. This unlocks two things:
 
 * **Upgraded benchmarks.** We curate **LiveCodeBench-Plus**, a 91-problem benchmark combining evolved tasks with difficult original LCB-v6 problems. Frontier-model Pass@1 ranges from **27.5% to 62.6%**, restoring clear separation among strong coding models.
 
@@ -45,7 +45,7 @@ Because each task is selected by whether models actually fail it—not by how di
 The loop closes: **models generate hard tasks → learn from them → get stronger.**
 
 
-## One mutation, a whole new problem
+## One mutation, a substantially upgraded problem
 
 The fastest way to see how BenchEvolver works is to watch it turn an easy problem into a hard one. Instead of writing a new problem and hoping it's difficult, it starts from a **known-correct solution**, mutates it into something structurally different, and only then writes the problem and tests to match:
 
@@ -61,9 +61,9 @@ Change the computation, and a familiar-looking problem can suddenly demand an en
 
 The surface story stays familiar; the computation underneath jumps to a different world. And the difficulty is *real* — it's baked into a solution that genuinely requires it, not bolted on as surface complexity.
 
-## How it works: a loop that learns
+## How it works: evolutionary generation with memory
 
-Turning that one trick into a dependable pipeline takes more than a clever prompt. BenchEvolver runs an evolutionary loop with a memory, so each round builds on the last instead of just rerolling the dice:
+The example above shows the core idea, but a practical benchmark generator has to do more: reject invalid tasks, filter out superficial difficulty, and keep the search diverse. BenchEvolver handles this with an evolutionary loop with memory, so each round builds on previous successes and failures rather than sampling independently:
 
 <img src="framework.png" alt="BenchEvolver framework" class="content-image" style="height: 420px; padding: 10px;">
 
@@ -77,23 +77,23 @@ Three principles keep the output honest:
 - **Verify by agreement.** Several independent checks — not a single AI judge — must agree the problem, solution, and tests all describe the same task.
 - **Select by real failure.** Difficulty is *measured*, not assigned: a task survives only if models genuinely fail it more often than its original.
 
-The result is a steady supply of verified, diverse, hard problems — with no human writing them and no stronger model to lean on.
+The result is a scalable pipeline for producing verified, diverse, and empirically difficult problems — without requiring humans to write each task or a stronger model to serve as teacher.
 
 ## The problems are genuinely harder
 
-Across both domains and every model we tried, evolved problems consistently cut pass rates relative to their originals. The most telling part: **each model also struggles on the problems it evolved itself** — the signature of *self-challenging* generation. The model is probing the exact frontier where its own ability runs out, not a strong teacher spoon-feeding a weaker student.
+Across both domains and every model we tried, evolved problems consistently cut pass rates relative to their originals. The most telling part: **each model also struggles on the problems it evolved itself** — the signature of *self-challenging* generation. The model is probing regions near its own capability boundary, instead of depending on a stronger-teacher distillation setup.
 
 <img src="lcb_difficulty.png" alt="LiveCodeBench seed vs evolved Pass@1" class="content-image" style="height: 360px; padding: 10px;">
 
 <img src="scicode_difficulty.png" alt="SciCode seed vs evolved Pass@1" class="content-image" style="height: 360px; padding: 10px;">
 
-And the difficulty is more than skin-deep. Six competitive-programming experts (Codeforces master / IOI / ICPC level) reviewed the evolved problems by hand: they rated them more novel and much harder — yet just as *clear* as the originals. So this is real difficulty, not obfuscation. It also broadens *what* gets tested. The originals lean on a few familiar patterns; the evolved problems spread across a far wider range of advanced algorithms and data structures, growing the number of distinct algorithmic categories from **19 to 30**. BenchEvolver doesn't just turn up the difficulty dial — it expands the map.
+The difficulty is not merely superficial. Six competitive-programming experts (Codeforces master / IOI / ICPC level) manually reviewed the evolved problems: they rated them more novel and much harder — yet just as *clear* as the originals. This suggests the difficulty reflects algorithmic changes rather than obfuscation. It also broadens *what* gets tested. The originals lean on a few familiar patterns; the evolved problems spread across a wider range of advanced algorithms and data structures, growing the number of distinct algorithmic categories from **19 to 30**. BenchEvolver therefore increases difficulty while also expanding algorithmic coverage.
 
 <img src="algo_shift.png" alt="Algorithm category shift from seed to evolved" class="content-image" style="height: 320px; padding: 10px;">
 
 ## LiveCodeBench-Plus: a benchmark that discriminates again
 
-We took the best evolved problems — each vetted by experts — and combined them with the hardest surviving originals into **LiveCodeBench-Plus**, a 91-problem benchmark for frontier coding models. On the hardest split, average pass rates fall from **87% to 46%**, and the strongest models now spread cleanly from **27.5% to 62.6%**. A benchmark that had gone quiet can tell models apart again.
+We took the best evolved problems — each vetted by experts — and combined them with the hardest surviving originals into **LiveCodeBench-Plus**, a 91-problem benchmark for frontier coding models. On the hardest split, average pass rates fall from **87% to 46%**, and the strongest models now spread cleanly from **27.5% to 62.6%**. The resulting benchmark restores clear separation among state-of-the-art models.
 
 | Model | Provider | Pass@1 |
 |---|---|---|
@@ -106,9 +106,9 @@ We took the best evolved problems — each vetted by experts — and combined th
 | GPT-5.4-mini | OpenAI | 29.6 |
 | DeepSeek-V4-Pro | DeepSeek | 27.5 |
 
-## Self-improvement: harder problems make better teachers
+## Self-improvement: evolved tasks as training signal
 
-Here's the part we find most exciting. If a model can generate problems that are genuinely hard *for itself*, those problems should be exactly what it needs to *learn* from. So we closed the loop: take a model, have it evolve problems it already solves into harder versions, then train it on those self-made challenges.
+The same evolved tasks can also be used as training signal. If a model can generate problems that are genuinely hard *for itself*, those problems should be exactly what it needs to *learn* from. So we closed the loop: take a model, have it evolve problems it already solves into harder versions, then train it on those self-made challenges.
 
 <img src="RL_curve1.png" alt="RL training curves: training on evolved problems beats training on the original seeds across three held-out benchmarks" class="content-image" style="height: 300px; padding: 10px;">
 
@@ -118,11 +118,13 @@ The improvement also transfers to a separate evolved benchmark built by a differ
 
 ## Why it matters, and what's next
 
-Any fixed benchmark eventually saturates — and the better our models get, the faster it happens. BenchEvolver points to a different way of thinking about evaluation: not a frozen dataset that goes stale, but a **living benchmark** — a pipeline that keeps generating, verifying, and calibrating fresh challenges against whatever the frontier looks like today.
+Any fixed benchmark eventually saturates — and the better our models get, the faster it happens. BenchEvolver points to a different way of thinking about evaluation: not a static dataset that goes stale, but a **living benchmark** — a pipeline that keeps generating, verifying, and calibrating fresh challenges against whatever the frontier looks like today.
 
 And because those same verified challenges can also *train* the models that fail them, evaluation and training stop being separate stages. They fuse into one loop: the problems that expose a model's limits become the problems that help it move past them.
 
-For the full method, validation protocols, and experiments, see the [paper](https://arxiv.org/abs/2606.01286), [code](https://github.com/thu-wyz/BenchEvolver), and [dataset](https://huggingface.co/BenchEvolver).
+The same idea is not limited to the above single-shot coding benchmarks. We are continuing to explore how solution-centric evolution can extend to more agentic coding tasks, where success may depend on multi-step interaction with repositories, tools, and environments, as well as to broader domains where verification is less straightforward than running hidden tests. The overarching goal remains the same: to generate self-challenging and meaningful tasks in a scalable way.
+
+For the full method details, validation protocols, and experiments, see the [paper](https://arxiv.org/abs/2606.01286), [code](https://github.com/thu-wyz/BenchEvolver), and [dataset](https://huggingface.co/BenchEvolver).
 
 #### Citation
 
